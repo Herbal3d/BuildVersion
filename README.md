@@ -44,9 +44,9 @@ As an example, for [Convoar](https://github.com/Misterblue/convoar), performing:
 ```
 git clone https://github.com/Misterblue/convoar.git
 cd convoar
-bin/BuildVersion.exe --version $(cat VERSION) \\
-            --namespace org.herbal3d.convoar \\
-            --assemblyInfoFile convoar/Properties/AssemblyInfo.cs \\
+bin/BuildVersion.exe --version $(cat VERSION) \
+            --namespace org.herbal3d.convoar \
+            --assemblyInfoFile convoar/Properties/AssemblyInfo.cs \
             --versionFile convoar/VersionInfo.cs
 ```
 
@@ -59,9 +59,9 @@ also create a `VersionInfo.cs` file that contains:
 using System;
 namespace BuildVersion {
     public c class VersionInfo {
-        public static string appVersion = 2.3.4;
-        public static string longVersion = 2.3.4-20220502-a90774dd;
-        public static string buildDate = 20220502;
+        public static string appVersion = "2.3.4";
+        public static string longVersion = "2.3.4-20220502-a90774dd";
+        public static string buildDate = "20220502";
     }
 }
 ```
