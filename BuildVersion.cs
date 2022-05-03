@@ -45,7 +45,7 @@ namespace org.herbal3d.buildVersion
                 log.Info("BuildVersion {0}. See https://github.com/Misterblue/BuildVersion", VersionInfo.longVersion);
 
                 // Verify passed version number is in good format
-                string[] versionParts = appParams.Version.Split(".");
+                string[] versionParts = appParams.Version.Split('.');
                 if (versionParts.Length != 3) {
                     log.Error("Specified version number must be in form 'num.num.num'. Given version = {0}", appParams.Version);
                     return;
