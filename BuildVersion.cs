@@ -29,8 +29,8 @@ namespace org.herbal3d.buildVersion
         // https://docs.microsoft.com/en-us/dotnet/core/tutorials/top-level-templates
         // This project has disabled implicit usings and nullable contexts.
 
-        AppParams appParams;
-        BLogger log;
+        AppParams? appParams;
+        BLogger? log;
 
         static void Main(string[] args) {
             BuildVersion app = new BuildVersion();
