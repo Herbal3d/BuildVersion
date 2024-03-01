@@ -23,63 +23,67 @@ using System.Threading.Tasks;
 
 namespace org.herbal3d.buildVersion
 {
-    internal class BuildVersion {
+    class BuildVersion {
 
         // Notes on the new net6 templating changes
         // https://docs.microsoft.com/en-us/dotnet/core/tutorials/top-level-templates
         // This project has disabled implicit usings and nullable contexts.
 
-        AppParams? appParams;
-        BLogger? log;
+        AppParams appParams;
+        BLogger log;
 
         static void Main(string[] args) {
-            BuildVersion app = new BuildVersion();
-            app.Start(args);
-        }
-
-        public void Start(string[] args) {
-            appParams = GetParams(args);
-            if (appParams != null) {
-                log = new LoggerConsole(appParams);
-
-                log.Info("BuildVersion {0}. See https://github.com/Misterblue/BuildVersion", VersionInfo.longVersion);
-
-                // Verify passed version number is in good format
-                string[] versionParts = appParams.Version.Split('.');
-                if (versionParts.Length != 3) {
-                    log.Error("Specified version number must be in form 'num.num.num'. Given version = {0}", appParams.Version);
-                    return;
-                }
-
-                OptionallyIncrementBuildNumber(ref versionParts);
-
-                // Get the Git version of the current HEAD
-                string gitVersion = GetGitVersion();
-                if (gitVersion != null) {
-
-                    // Built date is assumed to be when BuildVersion is run
-                    if (appParams.BuildDate == null) {
-                        appParams.BuildDate = DateTime.UtcNow.ToString("yyyyMMdd");
-                    }
-
-                    // Long version string is app version, build date, and git commit
-                    if (appParams.LongVersion == null) {
-                        appParams.LongVersion = appParams.Version + "-" + appParams.BuildDate + "-" + gitVersion.Substring(0, 8);
-                    }
-
-                    if (appParams.Print) {
-                        // Print out the version if that what was asked for
-                        System.Console.WriteLine(appParams.LongVersion);
-                    }
-                    else {
-                        WriteVersionFile();
-                        UpdateAssemblyFile();
-                        WriteAppVersion();
-                    }
-                }
+            var parms = GetParams(args);
+            if (parms is not null) {
+                var logger = new LoggerConsole(parms);
+                BuildVersion app = new BuildVersion(parms, logger);
+                app.Start();
             }
             else {
                 System.Console.WriteLine("Failed processing parameters");
+            }
+        }
+
+        public BuildVersion(AppParams pParams, BLogger pLog) {
+            appParams = pParams;
+            log = pLog;
+        }
+
+        public void Start() {
+            log.Info("BuildVersion {0}. See https://github.com/Misterblue/BuildVersion", VersionInfo.longVersion);
+
+            // Verify passed version number is in good format
+            string[] versionParts = appParams.Version.Split('.');
+            if (versionParts.Length != 3) {
+                log.Error("Specified version number must be in form 'num.num.num'. Given version = {0}", appParams.Version);
+                return;
+            }
+
+            OptionallyIncrementBuildNumber(ref versionParts);
+
+            // Get the Git version of the current HEAD
+            string? gitVersion = GetGitVersion();
+            if (gitVersion is not null) {
+
+                // Built date is assumed to be when BuildVersion is run
+                if (appParams.BuildDate == null) {
+                    appParams.BuildDate = DateTime.UtcNow.ToString("yyyyMMdd");
+                }
+
+                // Long version string is app version, build date, and git commit
+                if (appParams.LongVersion == null) {
+                    appParams.LongVersion = appParams.Version + "-" + appParams.BuildDate + "-" + gitVersion.Substring(0, 8);
+                }
+
+                if (appParams.Print) {
+                    // Print out the version if that what was asked for
+                    System.Console.WriteLine(appParams.LongVersion);
+                }
+                else {
+                    WriteVersionFile();
+                    UpdateAssemblyFile();
+                    WriteAppVersion();
+                }
             }
         }
 
@@ -87,30 +91,35 @@ namespace org.herbal3d.buildVersion
         /// Fetch the long form of the current selected GIT version.
         /// </summary>
         /// <returns>The long form of current Git HEAD version or 'null' if cannot be read</returns>
-        public string GetGitVersion() {
-            string gitVersion = null;
+        public string? GetGitVersion() {
+            string? gitVersion = null;
 
-            string gitDir = appParams.GitDir;
+            string? gitDir = appParams.GitDir;
 
-            string headFile = gitDir + "/" + "HEAD";
-            if (File.Exists(headFile)) {
-                string refFile = ".git/" + File.ReadAllText(headFile);
-                var refFilePieces = refFile.Split(' ');
-                if (refFilePieces.Length > 1) {
-                    if (refFilePieces[0] == ".git/ref:") {
-                        refFile = gitDir + "/" + refFilePieces[1].Trim();
+            if (gitDir is not null) {
+                string headFile = gitDir + "/" + "HEAD";
+                if (File.Exists(headFile)) {
+                    string refFile = ".git/" + File.ReadAllText(headFile);
+                    var refFilePieces = refFile.Split(' ');
+                    if (refFilePieces.Length > 1) {
+                        if (refFilePieces[0] == ".git/ref:") {
+                            refFile = gitDir + "/" + refFilePieces[1].Trim();
+                        }
+                    }
+
+                    if (File.Exists(refFile)) {
+                        gitVersion = File.ReadAllText(refFile).Trim();
+                    }
+                    else {
+                        log.Error("Cannot open GIT ref file named {0}", refFile);
                     }
                 }
-
-                if (File.Exists(refFile)) {
-                    gitVersion = File.ReadAllText(refFile).Trim();
-                }
                 else {
-                    log.Error("Cannot open GIT ref file named {0}", refFile);
+                    log.Error("Cannot open GIT HEAD file named {0}", headFile);
                 }
             }
             else {
-                log.Error("Cannot open GIT HEAD file named {0}", headFile);
+                log.Error("gitDir not specified in app parameters");
             }
             return gitVersion;
         }
@@ -132,21 +141,21 @@ namespace org.herbal3d.buildVersion
 
         public void WriteVersionFile() {
             // Write VersionFile
-            if (appParams.VersionFile != null) {
+            if (appParams.VersionFile is not null) {
                 log.Debug("Creating version file {0}", appParams.VersionFile);
                 try {
                     var buff = new StringBuilder();
                     buff.AppendLine("// This file is auto-generated by BuildVersion");
                     buff.AppendLine("// Before editting, check out the application's build environment for use of BuildVersion");
                     buff.AppendLine("using System;");
-                    buff.AppendLine(String.Format("namespace {0} {{", appParams.NameSpace));
+                    buff.AppendLine(String.Format("namespace {0} {{", appParams.NameSpace ?? "UNKNOWN"));
                     buff.AppendLine("    public class VersionInfo {");
                     buff.AppendLine(String.Format("        public static string appVersion = \"{0}\";", appParams.Version));
                     buff.AppendLine(String.Format("        public static string longVersion = \"{0}\";", appParams.LongVersion));
                     buff.AppendLine(String.Format("        public static string buildDate = \"{0}\";", appParams.BuildDate));
                     buff.AppendLine("    }");
                     buff.AppendLine("}");
-                    File.WriteAllText(appParams.VersionFile, buff.ToString());
+                    File.WriteAllText(appParams.VersionFile ?? "", buff.ToString());
                 }
                 catch (Exception e) {
                     log.Error("Exception writing version file {0}: {1}", appParams.VersionFile, e);
@@ -155,7 +164,7 @@ namespace org.herbal3d.buildVersion
         }
 
         public void UpdateAssemblyFile() {
-            if (appParams.AssemblyFile != null) {
+            if (appParams.AssemblyFile is not null) {
                 log.Debug("Adding version {0} to {1}", appParams.Version, appParams.AssemblyFile);
                 try {
                     string ambly = File.ReadAllText(appParams.AssemblyFile);
@@ -170,7 +179,7 @@ namespace org.herbal3d.buildVersion
         }
 
         public void WriteAppVersion() {
-            if (appParams.WriteAppVersion != null) {
+            if (appParams.WriteAppVersion is not null) {
                 File.WriteAllText(appParams.WriteAppVersion, appParams.Version);
             }
         }
@@ -181,7 +190,7 @@ namespace org.herbal3d.buildVersion
         /// </summary>
         /// <param name="args">command line parameters</param>
         /// <returns>initialized AppParams or 'null' if there were errors</returns>
-        private AppParams GetParams(string[] args) {
+        public static AppParams? GetParams(string[] args) {
             var parms = new AppParams();
             // A single parameter of '--help' outputs the invocation parameters
             if (args.Length > 0 && args[0] == "--help") {
@@ -201,7 +210,7 @@ namespace org.herbal3d.buildVersion
             return parms;
         }
 
-        private string Invocation(AppParams pParams) {
+        public static string Invocation(AppParams pParams) {
             StringBuilder buff = new StringBuilder();
             buff.AppendLine("Invocation: BuildVersion <parameters>");
             buff.AppendLine("   Possible parameters are (negate bool parameters by prepending 'no'):");

@@ -102,10 +102,7 @@ namespace org.herbal3d.buildVersion {
                     ConfigParam? cp = attr as ConfigParam;
                     if (cp != null) {
                         if (cp.name == pName) {
-                            object? val = fi.GetValue(this);
-                            if (val != null) {
-                                ret = val.ToString();
-                            }
+                            ret = fi.GetValue(this)?.ToString() ?? "";
                             break;
                         }
                     }
@@ -150,7 +147,8 @@ namespace org.herbal3d.buildVersion {
                         }
                         else {
                             if (pVal.GetType().GetMethod("ConvertTo") != null) {
-                                ret = pVal.GetType().GetMethod("ConvertTo").Invoke(pVal, new object[] { pT });
+                                ret = pVal.GetType().GetMethod("ConvertTo")?.Invoke(pVal,
+                                                            new object[] { pT });
                             }
                             else {
                                 ret = Convert.ChangeType(pVal, pT);
@@ -299,8 +297,10 @@ namespace org.herbal3d.buildVersion {
                         val = positiveAssertion;
                     }
                 }
-                // Set the named parameter to the passed value
-                fi?.SetValue(this, ConvertToObj(cp.valueType, val));
+                if (cp is not null) {
+                    // Set the named parameter to the passed value
+                    fi?.SetValue(this, ConvertToObj(cp.valueType, val));
+                }
             }
             else {
                 throw new ArgumentException("Unknown parameter " + parm);
